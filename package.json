@@ -1,0 +1,16 @@
+{
+  "name": "jsrml",
+  "main": "index.js",
+  "version": "0.1.0",
+  "description": "RainBot Module Library for JavaScript",
+  "homepage": "http://rainbot.info/rmls#JavaScript",
+  "repository": "https://github.com/Wolfchase/jsrml",
+  "license": "GPL-3.0",
+  "author": {
+    "name": "Rodolfo Castillo",
+    "email": "rcvallada@gmail.com"
+  },
+  "dependencies": {
+    "json-rpc2": "^1.0.2"
+  }
+}
