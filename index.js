@@ -43,7 +43,7 @@ class Module {
 
   startRpcServer() {
       const server = rpc.Server.$create({});
-      server.expose(this.name.toLower(), {
+      server.expose(this.name.toLowerCase(), {
           InvokeCommand: this.invokeCommand.bind(this),
           Dispatch: this.dispatch.bind(this),
           Cleanup: this.cleanup.bind(this)
