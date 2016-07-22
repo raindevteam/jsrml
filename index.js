@@ -82,8 +82,8 @@ class Module {
 
   addCommand(name, hook) {
       const data = {
-          "Name": name,
-          "Module": this.name
+          "CommandName": name,
+          "ModuleName": this.name
       };
       this.Master.call('Master.RegisterCommand', data, function(err, result) {});
       hook.Fun = hook.Fun.bind(this);
@@ -97,7 +97,7 @@ class Module {
   register() {
       const data = {
           "Port": this.rpcPort.toString(),
-          "Name": this.name
+          "ModuleName": this.name
       };
       this.Master.call('Master.Register', data, function(err, result) {
           if (err) console.error(err);
