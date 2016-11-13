@@ -4,8 +4,8 @@ const portfinder = require('portfinder');
 const rpc        = require('json-rpc2');
 const Q          = require('q');
 
-function RpcNewClient() {
-    return rpc.Client.$create(5555, 'localhost');
+function RpcNewClient(port) {
+    return rpc.Client.$create(parseInt(port), 'localhost');
 }
 
 class Module {
@@ -13,48 +13,31 @@ class Module {
   constructor(name, desc) {
     this.name = name;
     this.desc = desc;
-    this.rpc = RpcNewClient();
+    this.rpc = null;
     this.commands = new Map();
     this.triggers = new Map();
     this.cleanupFunction;
   }
 
-    initialize() {
-        const deferred = Q.defer();
-
-        const promises = [
-            Q.nbind(this.rpc.connectSocket, this.rpc)()
-          , Q.nbind(portfinder.getPort)()
-        ]
-
-        Q.all(promises)
-        .then((results) => {
-            this.Master = results[0]
-            this.rpcPort = results[1]
-            this.startRpcServer();
-            deferred.resolve();
-        })
-        .fail((error) => {
-            deferred.reject(new Error(error))
-        });
-
-        return deferred.promise;
-  }
-
-  startRpcServer() {
+  startRpcServer(port) {
       const server = rpc.Server.$create({});
       server.expose(this.name.toLowerCase(), {
           InvokeCommand: this.invokeCommand.bind(this),
           Dispatch: this.dispatch.bind(this),
           Cleanup: this.cleanup.bind(this)
       });
-      server.listenRaw(parseInt(this.rpcPort), 'localhost');
+      server.listenRaw(port, 'localhost');
   }
 
   /* Separate rpc logic from module */
 
   invokeCommand(cmdData, opt, callback) {
-      this.commands.get(cmdData[0].Name).Fun(cmdData[0].Msg, cmdData[0].Args);
+      try {
+          this.commands.get(cmdData[0].Name).Fun(cmdData[0].Msg, cmdData[0].Args);
+      } catch (e) {
+          return callback(e, "");
+      }
+      
       return callback(null, "");
   }
 
@@ -81,26 +64,39 @@ class Module {
   }
 
   addCommand(name, hook) {
+      hook.Fun = hook.Fun.bind(this);
+      this.commands.set(name, hook);
+  }
+
+  registerCommand(name) {
       const data = {
           "CommandName": name,
           "ModuleName": this.name
       };
       this.Master.call('Master.RegisterCommand', data, function(err, result) {});
-      hook.Fun = hook.Fun.bind(this);
-      this.commands.set(name, hook);
   }
 
   say(chan, text) {
       this.Master.call('Master.Send', chan + " :" + text, function(err, result) {});
   }
 
-  register() {
-      const data = {
-          "Port": this.rpcPort.toString(),
-          "ModuleName": this.name
-      };
-      this.Master.call('Master.Register', data, function(err, result) {
-          if (err) console.error(err);
+  register(args) {
+      portfinder.getPort((err, port) => {
+        this.startRpcServer(port);
+        if (err) {
+            console.error("Here is err: " + err)
+        }
+        this.Master = RpcNewClient(args[2]).connectSocket();
+        this.commands.forEach((val, key) => {
+            this.registerCommand(key)
+        });
+        const data = {
+            "Port": port.toString(),
+            "ModuleName": this.name
+        };
+        this.Master.call('Master.Register', data, function(err, result) {
+            if (err) console.error(err);
+        });
       });
   }
 }
